@@ -1909,17 +1909,66 @@ class ChatSession:
             - If response structure is invalid and failed to parse.
         """
 
-        return await self.geminiclient.generate_content(
-            prompt=prompt,
-            files=files,
-            model=self.model,
-            gem=self.gem,
-            chat=self,
-            image=image,
-            temporary=temporary,
-            deep_research=deep_research,
-            **kwargs,
-        )
+        if not image:
+            return await self.geminiclient.generate_content(
+                prompt=prompt,
+                files=files,
+                model=self.model,
+                gem=self.gem,
+                chat=self,
+                image=image,
+                temporary=temporary,
+                deep_research=deep_research,
+                **kwargs,
+            )
+
+        # Image generation retry logic:
+        # Attempt 1: Same chat
+        # Attempt 2: 1st retry (same chat)
+        # Attempt 3: 2nd retry (same chat)
+        # Attempt 4: 3rd retry (brand new chat window)
+        max_attempts = 4
+        last_error = None
+
+        for attempt in range(1, max_attempts + 1):
+            if attempt == max_attempts:
+                logger.warning(
+                    f"Same-chat image generation retries failed for chat CID: {self.cid}. "
+                    "Resetting chat session to a new window for the final retry attempt..."
+                )
+                self.__metadata = DEFAULT_METADATA.copy()
+            elif attempt > 1:
+                delay = attempt * 3
+                logger.warning(
+                    f"Retrying image generation attempt {attempt}/{max_attempts} (same chat) "
+                    f"after error: {last_error}. Waiting {delay}s..."
+                )
+                await asyncio.sleep(delay)
+
+            try:
+                response = await self.geminiclient.generate_content(
+                    prompt=prompt,
+                    files=files,
+                    model=self.model,
+                    gem=self.gem,
+                    chat=self,
+                    image=image,
+                    temporary=temporary,
+                    deep_research=deep_research,
+                    **kwargs,
+                )
+                if response.images:
+                    return response
+                else:
+                    raise GeminiError("No images returned in response.")
+            except Exception as e:
+                last_error = e
+
+        if last_error:
+            raise last_error
+        else:
+            raise GeminiError("Image generation failed after all attempts.")
+
 
     async def send_message_stream(
         self,

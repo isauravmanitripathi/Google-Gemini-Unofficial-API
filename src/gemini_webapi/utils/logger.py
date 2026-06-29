@@ -1,12 +1,17 @@
 import sys
 from loguru import logger as _logger
 
-_handler_id = None
+# Initialize default handler with WARNING level to suppress verbose output
+_handler_id = _logger.add(
+    sys.stderr,
+    level="WARNING",
+    filter=lambda record: record["extra"].get("name") == "gemini_webapi",
+)
 
 
 def set_log_level(level: str | int) -> None:
     """
-    Set the log level for gemini_webapi. The default log level is "INFO".
+    Set the log level for gemini_webapi. The default log level is "WARNING".
 
     Note: calling this function for the first time will globally remove all existing loguru
     handlers. To avoid this, you may want to set logging behaviors directly with loguru.
@@ -35,3 +40,4 @@ def set_log_level(level: str | int) -> None:
 
 
 logger = _logger.bind(name="gemini_webapi")
+
