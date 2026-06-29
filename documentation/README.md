@@ -3,9 +3,11 @@
 This folder explains the image-generation flow that was added to the local Gemini client and how to use it from other scripts.
 
 Files:
-- [architecture.md](/Volumes/hard-drive/gemini-cli-test/documentation/architecture.md): how the image flow works internally
-- [usage.md](/Volumes/hard-drive/gemini-cli-test/documentation/usage.md): how to call it from Python and CLI
-- [interactive-client.md](/Volumes/hard-drive/gemini-cli-test/documentation/interactive-client.md): how the terminal test client behaves
+- [architecture.md](file:///Volumes/hard-drive/gemini-cli-test/Gemini-API/documentation/architecture.md): how the image flow works internally
+- [usage.md](file:///Volumes/hard-drive/gemini-cli-test/Gemini-API/documentation/usage.md): how to call it from Python and CLI
+- [interactive-client.md](file:///Volumes/hard-drive/gemini-cli-test/Gemini-API/documentation/interactive-client.md): how the terminal test client behaves
+- [image-generation-project-guide.md](file:///Volumes/hard-drive/gemini-cli-test/Gemini-API/documentation/image-generation-project-guide.md): how to build a project with automatic prompt execution, automatic saving, flag control, and automatic authentication
+
 
 Short version:
 - Normal text generation uses the standard Gemini chat flow.
