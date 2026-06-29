@@ -16,8 +16,6 @@ from typing import Dict, List, Set, Tuple, Optional, Any
 warnings.filterwarnings("ignore")
 
 # Automatically detect if Gemini-API/src is nearby and add it to sys.path
-# Script is at: /Volumes/hard-drive/gemini-cli-test/Gemini-API/image-generator/generate_images.py
-# Source is at: /Volumes/hard-drive/gemini-cli-test/Gemini-API/src
 script_dir = Path(__file__).resolve().parent
 parent_dir = script_dir.parent
 api_src_path = parent_dir / "src"
@@ -25,7 +23,6 @@ api_src_path = parent_dir / "src"
 if api_src_path.exists():
     sys.path.insert(0, str(api_src_path))
 else:
-    # Fallback to checking parent folder if run outside the repository folder
     alt_src_path = parent_dir / "Gemini-API" / "src"
     if alt_src_path.exists():
         sys.path.insert(0, str(alt_src_path))
@@ -459,6 +456,8 @@ def main():
     parser.add_argument(
         "folder", 
         type=str, 
+        nargs="?",
+        default=".",
         help="Path to the folder containing the book chapter markdown files."
     )
     parser.add_argument(
@@ -478,8 +477,61 @@ def main():
         action="store_true",
         help="Only display current progress/statistics and exit."
     )
+    parser.add_argument(
+        "--usage",
+        action="store_true",
+        help="Query and print your Gemini usage metrics/quotas and exit."
+    )
 
     args = parser.parse_args()
+
+    if args.usage:
+        async def show_usage():
+            try:
+                from gemini_webapi import GeminiClient, set_log_level
+                set_log_level("WARNING")
+            except ImportError:
+                log_error("'gemini_webapi' package is not installed in the active environment.")
+                return
+            
+            log_info("Initializing client and loading cookies...")
+            client = GeminiClient(prefer_browser_cookies=True, skip_cookie_cache=True)
+            await client.init()
+            
+            log_info("Querying usage limits from gemini.google.com...")
+            usage = await client.get_usage()
+            await client.close()
+            
+            if usage.get("success"):
+                print("\n" + "="*50)
+                print(" GEMINI USAGE METRICS & QUOTAS")
+                print("="*50)
+                for meter in usage.get("meters", []):
+                    feature = meter.get("feature_id")
+                    use = meter.get("usage")
+                    lim = meter.get("limit")
+                    reset = meter.get("reset_time")
+                    
+                    if feature == 44973:
+                        feature_name = "Premium/Image Generation"
+                        use_str = f"{use * 100:.2f}% used" if isinstance(use, (int, float)) else str(use)
+                        lim_str = f"Max capacity group {lim}"
+                    else:
+                        feature_name = f"General Quota (ID {feature})"
+                        use_str = str(use)
+                        lim_str = str(lim)
+                    
+                    print(f"Feature:    {feature_name}")
+                    print(f"Usage:      {use_str}")
+                    print(f"Limit:      {lim_str}")
+                    if reset:
+                        print(f"Resets At:  {reset}")
+                    print("-" * 50)
+            else:
+                log_error(f"Failed to query usage limits: {usage.get('error')}")
+                
+        asyncio.run(show_usage())
+        sys.exit(0)
 
     app = ImageGeneratorApp(target_dir=args.folder, log_file=args.log, num_workers=args.workers)
 

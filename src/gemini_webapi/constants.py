@@ -73,6 +73,10 @@ class GRPC(StrEnum):
 
     GET_FULL_SIZE_IMAGE = "c8o8Fe"
 
+    GET_USAGE_1 = "sJBwce"
+    GET_USAGE_2 = "jSf9Qc"
+
+
     BARD_SETTINGS = "ESY5D"
 
 

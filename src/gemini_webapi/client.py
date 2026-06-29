@@ -1693,7 +1693,76 @@ class GeminiClient(ChatMixin, GemMixin, ResearchMixin):
             return None
 
     @running(retry=2)
+    async def get_usage(self) -> dict:
+        """
+        Retrieves the current usage statistics and limits from gemini.google.com.
+
+        Returns
+        -------
+        dict
+            A dictionary containing parsed usage limits and reset times.
+        """
+        from datetime import datetime
+        from .types.grpc import RPCData
+        from .utils.parsing import extract_json_from_response, get_nested_value
+
+        try:
+            response = await self._batch_execute(
+                [RPCData(rpcid=GRPC.GET_USAGE_2, payload="[]")],
+                source_path="/usage"
+            )
+            response_data = extract_json_from_response(response.text)
+            inner_str = get_nested_value(response_data, [0, 2], "[]")
+            data = json.loads(inner_str)
+            
+            meters = []
+            if isinstance(data, list) and len(data) > 1 and isinstance(data[1], list):
+                for item in data[1]:
+                    if not isinstance(item, list):
+                        continue
+                    
+                    if len(item) >= 4:
+                        feature_id = item[0]
+                        usage = item[1]
+                        limit = item[2]
+                        timestamps = item[3]
+                        
+                        reset_time = None
+                        if isinstance(timestamps, list) and len(timestamps) > 0:
+                            first_ts = timestamps[0]
+                            if isinstance(first_ts, list) and len(first_ts) > 0:
+                                try:
+                                    reset_time = datetime.fromtimestamp(first_ts[0]).isoformat()
+                                except Exception:
+                                    pass
+                        
+                        meters.append({
+                            "feature_id": feature_id,
+                            "usage": usage,
+                            "limit": limit,
+                            "reset_time": reset_time,
+                            "raw": item
+                        })
+                    else:
+                        meters.append({
+                            "raw": item
+                        })
+            
+            return {
+                "success": True,
+                "meters": meters,
+                "raw": data
+            }
+        except Exception as e:
+            logger.debug(f"Failed to fetch usage: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    @running(retry=2)
     async def _batch_execute(
+
         self,
         payloads: list[RPCData],
         source_path: str = "/app",
