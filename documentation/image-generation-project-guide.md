@@ -164,8 +164,49 @@ if __name__ == "__main__":
 
 ---
 
-## 4. Key Best Practices
+## 4. Key Advanced Features
+
+### A. Quota & Usage Limit Monitoring
+The library allows you to check your account's remaining quota limits directly from Google's servers using `client.get_usage()`. It returns a list of metrics containing the usage level, the limit threshold, and the exact reset time for both short-term (daily) and long-term (weekly premium) usage.
+
+```python
+usage_info = await client.get_usage()
+for meter in usage_info.get("meters", []):
+    print(f"Feature ID: {meter['feature_id']}")
+    print(f"Usage: {meter['usage']}")
+    print(f"Limit: {meter['limit']}")
+    print(f"Resets At: {meter['reset_time']}")
+```
+
+### B. Persistent Retry Logic
+To counter rate limits or transient API glitches, calling `chat.send_message(..., image=True)` uses a 4-attempt retry workflow under the hood:
+1. **Attempts 1, 2, and 3**: Executed in the same chat window context with exponential backoff delays.
+2. **Attempt 4**: If previous attempts fail, it clears the session variables (`self.__metadata`) to start a new chat window on Google's servers for one final generation attempt.
+
+---
+
+## 5. CLI Commands Reference
+
+When using the custom bulk image generation tool [generate_images.py](file:///Volumes/hard-drive/gemini-cli-test/image-generator/generate_images.py), you have access to the following terminal commands:
+
+*   **Run/Resume Generation**: Scans markdown files for `<!-- IMAGE_PROMPT -->` comment tags, cross-checks with `image_generation_log.jsonl`, and processes the remaining images:
+    ```bash
+    python image-generator/generate_images.py "/Volumes/hard-drive/Generate-auto-book/orielly-book/Hands-On Large Language Models 9781098150952/pipeline/final"
+    ```
+*   **Show Statistics Only**: Checks how many images have been completed and how many are remaining without running the queue:
+    ```bash
+    python image-generator/generate_images.py "/Volumes/hard-drive/Generate-auto-book/orielly-book/Hands-On Large Language Models 9781098150952/pipeline/final" --stats
+    ```
+*   **Print Usage Limits**: Queries Google's servers and displays remaining image quotas and reset times:
+    ```bash
+    python image-generator/generate_images.py --usage
+    ```
+
+---
+
+## 6. Key Best Practices
 
 1. **Browser Selection**: If you have multiple browsers, the client tries to detect active sessions. Make sure you are actively logged in to [gemini.google.com](https://gemini.google.com) on your primary default browser.
 2. **Directory Permissions**: Ensure the script has read and write permissions for the destination folder you specify in `output_dir`.
 3. **Client Resource Disposal**: Always call `await client.close()` in a `finally` block or use context managers to guarantee that open HTTP sessions are closed cleanly.
+
